@@ -11,7 +11,7 @@ async function main() {
   // TODO: make configurable through CLI params
   const contract = await Contract.deploy(
     // eth goerli
-    // TheGudPrice
+    // GudGuess
     '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     '0xE592427A0AEce92De3Edee1F18E0157C05861564',
     '',
@@ -22,7 +22,7 @@ async function main() {
     '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
 
     // arbitrum mainnet
-    // TheGudPrice
+    // GudGuess
     // '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     // '0xE592427A0AEce92De3Edee1F18E0157C05861564',
     // '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',

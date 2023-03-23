@@ -1,6 +1,6 @@
-# The Gud Price (TGP)
+# Gud Guess (GG)
 
-https://thegudprice.com
+https://gudguess.com
 
 ## Compile
 
@@ -13,7 +13,7 @@ $ npx hardhat compile
 If your contract requires extra constructor arguments, you'll have to specify them in [deploy options](https://hardhat.org/plugins/hardhat-deploy.html#deployments-deploy-name-options).
 
 ```sh
-$ CONTRACT_NAME=TheGudPrice npx hardhat run --network goerli scripts/deploy.js
+$ CONTRACT_NAME=GudGuess npx hardhat run --network goerli scripts/deploy.js
 $ # lpCreatePool(3000, priceX96)
 $ # lpCreatePool(10000, priceX96)
 $ # lpCreatePosition(3000, 50)

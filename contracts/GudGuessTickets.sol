@@ -6,10 +6,10 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import '@openzeppelin/contracts/utils/Counters.sol';
-import './interfaces/ITheGudPriceTickets.sol';
+import './interfaces/IGudGuessTickets.sol';
 import './ERC721Enumerable.sol';
 
-contract TheGudPriceTickets is ITheGudPriceTickets, ERC721Enumerable, Ownable {
+contract GudGuessTickets is IGudGuessTickets, ERC721Enumerable, Ownable {
   using Strings for uint256;
   using Counters for Counters.Counter;
 
@@ -37,9 +37,7 @@ contract TheGudPriceTickets is ITheGudPriceTickets, ERC721Enumerable, Ownable {
     _;
   }
 
-  constructor(
-    string memory _baseTokenURI
-  ) ERC721('The Gud Price Tickets', 'tTGP') {
+  constructor(string memory _baseTokenURI) ERC721('Gud Guess Tickets', 'tGG') {
     baseTokenURI = _baseTokenURI;
     gudPrice = msg.sender;
   }

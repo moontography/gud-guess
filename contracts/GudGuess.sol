@@ -4,14 +4,14 @@ pragma solidity ^0.7.6;
 import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
 import './interfaces/BokkyPooBahsDateTimeLibrary.sol';
 import './PriceLogic.sol';
-import './TheGudPriceTickets.sol';
+import './GudGuessTickets.sol';
 import './UniswapV3FeeERC20.sol';
 import './WinnersCircle.sol';
 
-contract TheGudPrice is PriceLogic, UniswapV3FeeERC20 {
+contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
   uint32 constant DENOMENATOR = 10000;
 
-  TheGudPriceTickets public tickets;
+  GudGuessTickets public tickets;
   WinnersCircle public winnersCircle;
 
   address priceToken;
@@ -99,8 +99,8 @@ contract TheGudPrice is PriceLogic, UniswapV3FeeERC20 {
     address _WETH9
   )
     UniswapV3FeeERC20(
-      'The Gud Price',
-      'TGP',
+      'Gud Guess',
+      'GG',
       _manager,
       _swapRouter,
       _factory,
@@ -111,9 +111,7 @@ contract TheGudPrice is PriceLogic, UniswapV3FeeERC20 {
     _mint(address(this), _supply);
     swapAtAmount = (_supply * 2) / 1000; // 0.2% supply
 
-    tickets = new TheGudPriceTickets(
-      'https://api.thegudprice.com/tickets/metadata/'
-    );
+    tickets = new GudGuessTickets('https://api.gudguess.com/tickets/metadata/');
     tickets.transferOwnership(msg.sender);
     winnersCircle = new WinnersCircle(tickets);
 

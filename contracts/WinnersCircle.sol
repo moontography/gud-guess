@@ -2,11 +2,11 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import './interfaces/ITheGudPriceTickets.sol';
+import './interfaces/IGudGuessTickets.sol';
 
 contract WinnersCircle {
   address public immutable owner;
-  ITheGudPriceTickets public gpTickets;
+  IGudGuessTickets public gpTickets;
 
   struct WinningMetadata {
     uint256 totalWinningsETH;
@@ -36,7 +36,7 @@ contract WinnersCircle {
     uint256 totalWinningsWeight
   );
 
-  constructor(ITheGudPriceTickets _gpTickets) {
+  constructor(IGudGuessTickets _gpTickets) {
     owner = msg.sender;
     gpTickets = _gpTickets;
   }
@@ -58,7 +58,7 @@ contract WinnersCircle {
     require(!ticketsClaimed[_tokenId], 'CLAIM: claimed');
     ticketsClaimed[_tokenId] = true;
 
-    ITheGudPriceTickets.TicketMetadata memory _ticket = gpTickets.tickets(
+    IGudGuessTickets.TicketMetadata memory _ticket = gpTickets.tickets(
       _tokenId
     );
     WinningMetadata memory _closeMd = weeklyCloseInfo[_ticket.weeklyClose];

@@ -1,7 +1,7 @@
 {
-  "name": "the-gud-price",
+  "name": "gud-guess",
   "version": "0.1.0",
-  "description": "TGP",
+  "description": "GG",
   "main": "index.js",
   "scripts": {
     "prettier": "prettier --write 'contracts/**/*.sol'",

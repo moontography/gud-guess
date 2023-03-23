@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 
-interface ITheGudPriceTickets is IERC721 {
+interface IGudGuessTickets is IERC721 {
   struct TicketMetadata {
     uint256 weeklyClose;
     address token;
