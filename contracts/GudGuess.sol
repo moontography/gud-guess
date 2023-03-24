@@ -145,11 +145,11 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
           require(_launchMax <= totalSupply() / 100, 'max 1% at launch');
         }
 
-        // seed jackpot with a trade tax on buys for the first 30 days
-        if (block.timestamp < launchTime + 30 days) {
-          _tax = (amount * 3) / 100;
-          super._transfer(sender, address(this), _tax);
-        }
+        // first 30 days tax at 5%, afterwards 0.5%
+        _tax = block.timestamp < launchTime + 30 days
+          ? (amount * 5) / 100
+          : (amount * 5) / 1000;
+        super._transfer(sender, address(this), _tax);
       } else if (block.timestamp > launchTime + 10 seconds) {
         require(!isBot[recipient], 'TRANSFER: bot0');
         require(!isBot[sender], 'TRANSFER: bot1');
