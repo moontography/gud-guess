@@ -186,7 +186,9 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
     uint256 _rawPriceAtPrecision = (_priceUSDX96 * 10 ** 18) /
       FixedPoint96.Q96 /
       10 ** precisionDecimals;
-    uint256 _finalPriceUSDX96 = _rawPriceAtPrecision * FixedPoint96.Q96;
+    uint256 _finalPriceUSDX96 = (_rawPriceAtPrecision *
+      FixedPoint96.Q96 *
+      10 ** precisionDecimals) / 10 ** 18;
     uint32 _weight = _getCurrentWinningsWeight();
 
     tickets.mint(
@@ -225,7 +227,9 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
     uint256 _rawClosePriceAtPrecision = (_fullClosePriceX96 * 10 ** 18) /
       FixedPoint96.Q96 /
       10 ** precisionDecimals;
-    uint256 _finalClosePriceX96 = _rawClosePriceAtPrecision * FixedPoint96.Q96;
+    uint256 _finalClosePriceX96 = (_rawClosePriceAtPrecision *
+      FixedPoint96.Q96 *
+      10 ** precisionDecimals) / 10 ** 18;
     weeklyClosePrice[_prevWeeklyClose] = _finalClosePriceX96;
     uint256 _winningsETH;
     if (weeklyGuesses[_prevWeeklyClose][_finalClosePriceX96] > 0) {
