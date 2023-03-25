@@ -3,8 +3,7 @@ pragma solidity ^0.7.6;
 
 interface ITwapUtils {
   function getSqrtPriceX96FromPoolAndInterval(
-    address uniswapV3Pool,
-    uint32 twapInterval
+    address uniswapV3Pool
   ) external view returns (uint160 sqrtPriceX96);
 
   function getSqrtPriceX96FromPriceX96(

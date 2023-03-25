@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
-import './interfaces/BokkyPooBahsDateTimeLibrary.sol';
-import './PriceLogic.sol';
 import './GudGuessTickets.sol';
+import './TwapUtils.sol';
 import './UniswapV3FeeERC20.sol';
 import './WinnersCircle.sol';
+import './libraries/BokkyPooBahsDateTimeLibrary.sol';
 
-contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
+contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   uint32 constant DENOMENATOR = 10000;
 
   GudGuessTickets public tickets;
@@ -43,7 +42,6 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
   uint32 public maxGuessJackpotWeight = 10 * DENOMENATOR;
 
   uint256 public launchTime;
-  uint32 public twapInterval = 5 minutes;
 
   uint256 public swapAtAmount;
   bool public swapEnabled = true;
@@ -220,7 +218,6 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
       priceToken,
       pricePool,
       nativeStablePool,
-      twapInterval,
       WETH9,
       _isPoolPairedWETH9
     );
@@ -354,10 +351,19 @@ contract GudGuess is PriceLogic, UniswapV3FeeERC20 {
         address(this),
         IUniswapV3Pool(_pool),
         nativeStablePool,
-        twapInterval,
         WETH9,
         true
       );
+  }
+
+  function getWeeklyCloseFromTimestamp(
+    uint256 _timestamp
+  ) public pure returns (uint256) {
+    uint256 _diffFromMidnight = _timestamp % 1 days;
+    uint256 _thisComingMidnight = _timestamp + 1 days - _diffFromMidnight;
+    uint256 _todayDOW = BokkyPooBahsDateTimeLibrary.getDayOfWeek(_timestamp);
+    uint256 _daysUntilEOW = 7 - _todayDOW;
+    return _thisComingMidnight + (_daysUntilEOW * 1 days);
   }
 
   function manualSwap() external onlyOwner {
