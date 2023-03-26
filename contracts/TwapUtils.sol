@@ -1,18 +1,50 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
 import '@uniswap/v3-core/contracts/libraries/FullMath.sol';
-import './interfaces/ITwapUtils.sol';
 
-contract TwapUtils is ITwapUtils {
+contract TwapUtils {
+  uint32 public twapInterval = 5 minutes;
+
+  // returns price USD/priceToken removing all decimals
+  function getPoolPriceUSDX96(
+    address _priceToken,
+    IUniswapV3Pool _pricePool,
+    IUniswapV3Pool _nativeStablePool,
+    address _WETH9,
+    bool _isPoolPairedWETH9
+  ) public view returns (uint256) {
+    if (_isPoolPairedWETH9) {
+      uint256 _priceMainX96 = _getNormalizedPriceX96(_pricePool, _WETH9);
+
+      address _token0 = _nativeStablePool.token0();
+      address _token1 = _nativeStablePool.token1();
+      uint256 _priceStableWETH9X96 = _getNormalizedPriceX96(
+        _nativeStablePool,
+        _token0 == _WETH9 ? _token1 : _token0
+      );
+
+      return (_priceStableWETH9X96 * _priceMainX96) / FixedPoint96.Q96;
+    }
+
+    // assume main pool is paired with a stable to directly calc USD price
+    address _mainToken0 = _pricePool.token0();
+    address _mainToken1 = _pricePool.token1();
+    return
+      _getNormalizedPriceX96(
+        _pricePool,
+        _mainToken0 == _priceToken ? _mainToken1 : _mainToken0
+      );
+  }
+
   function getSqrtPriceX96FromPoolAndInterval(
-    address uniswapV3Pool,
-    uint32 twapInterval
-  ) public view override returns (uint160 sqrtPriceX96) {
-    IUniswapV3Pool _pool = IUniswapV3Pool(uniswapV3Pool);
+    address _poolAddress
+  ) public view returns (uint160 sqrtPriceX96) {
+    IUniswapV3Pool _pool = IUniswapV3Pool(_poolAddress);
     if (twapInterval == 0) {
       // return the current price if twapInterval == 0
       (sqrtPriceX96, , , , , , ) = _pool.slot0();
@@ -33,7 +65,7 @@ contract TwapUtils is ITwapUtils {
   // https://docs.uniswap.org/sdk/v3/guides/fetching-prices
   function getSqrtPriceX96FromPriceX96(
     uint256 priceX96
-  ) public pure override returns (uint160 sqrtPriceX96) {
+  ) public pure returns (uint160 sqrtPriceX96) {
     return uint160(_sqrt(priceX96) * 2 ** (96 / 2));
   }
 
@@ -43,7 +75,7 @@ contract TwapUtils is ITwapUtils {
   // price ratio without needing to consider 2**96 multiplier or each token's decimals
   function getPriceX96FromSqrtPriceX96(
     uint160 sqrtPriceX96
-  ) public pure override returns (uint256 priceX96) {
+  ) public pure returns (uint256 priceX96) {
     return FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, FixedPoint96.Q96);
   }
 
@@ -55,5 +87,25 @@ contract TwapUtils is ITwapUtils {
       y = z;
       z = (x / z + z) / 2;
     }
+  }
+
+  // takes a pool and calculates the price based on a numerator token (usually token1)
+  // and removes decimals from respective tokens while normalizing by 2^96
+  function _getNormalizedPriceX96(
+    IUniswapV3Pool _pool,
+    address _numeratorToken
+  ) internal view returns (uint256) {
+    address _token1 = _pool.token1();
+    uint8 _decimals0 = ERC20(_pool.token0()).decimals();
+    uint8 _decimals1 = ERC20(_token1).decimals();
+    uint160 _sqrtPriceX96 = getSqrtPriceX96FromPoolAndInterval(address(_pool));
+    uint256 _priceX96 = getPriceX96FromSqrtPriceX96(_sqrtPriceX96);
+    uint256 _correctedPriceX96 = _token1 == _numeratorToken
+      ? _priceX96
+      : FixedPoint96.Q96 ** 2 / _priceX96;
+    return
+      _token1 == _numeratorToken
+        ? (_correctedPriceX96 * 10 ** _decimals0) / 10 ** _decimals1
+        : (_correctedPriceX96 * 10 ** _decimals1) / 10 ** _decimals0;
   }
 }
