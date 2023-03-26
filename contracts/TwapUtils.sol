@@ -6,13 +6,12 @@ import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
 import '@uniswap/v3-core/contracts/libraries/FullMath.sol';
-import './interfaces/ITwapUtils.sol';
 
-contract TwapUtils is ITwapUtils {
+contract TwapUtils {
   uint32 public twapInterval = 5 minutes;
 
-  // returns price USD/priceToken, normalized by 2^96
-  function getCurrentPoolPriceUSDX96(
+  // returns price USD/priceToken removing all decimals
+  function getPoolPriceUSDX96(
     address _priceToken,
     IUniswapV3Pool _pricePool,
     IUniswapV3Pool _nativeStablePool,
@@ -44,7 +43,7 @@ contract TwapUtils is ITwapUtils {
 
   function getSqrtPriceX96FromPoolAndInterval(
     address _poolAddress
-  ) public view override returns (uint160 sqrtPriceX96) {
+  ) public view returns (uint160 sqrtPriceX96) {
     IUniswapV3Pool _pool = IUniswapV3Pool(_poolAddress);
     if (twapInterval == 0) {
       // return the current price if twapInterval == 0
@@ -66,7 +65,7 @@ contract TwapUtils is ITwapUtils {
   // https://docs.uniswap.org/sdk/v3/guides/fetching-prices
   function getSqrtPriceX96FromPriceX96(
     uint256 priceX96
-  ) public pure override returns (uint160 sqrtPriceX96) {
+  ) public pure returns (uint160 sqrtPriceX96) {
     return uint160(_sqrt(priceX96) * 2 ** (96 / 2));
   }
 
@@ -76,7 +75,7 @@ contract TwapUtils is ITwapUtils {
   // price ratio without needing to consider 2**96 multiplier or each token's decimals
   function getPriceX96FromSqrtPriceX96(
     uint160 sqrtPriceX96
-  ) public pure override returns (uint256 priceX96) {
+  ) public pure returns (uint256 priceX96) {
     return FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, FixedPoint96.Q96);
   }
 

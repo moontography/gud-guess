@@ -174,7 +174,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     _swapTokensForETH(swapAtAmount - _burnTokens);
   }
 
-  function _buyPriceTicket(address _user, uint256 _priceUSDX96) internal {
+  function _buyTicket(address _user, uint256 _priceUSDX96) internal {
     uint256 _nextWeeklyClose = getWeeklyCloseFromTimestamp(block.timestamp);
     uint256 _weeklyCloseForGuess = block.timestamp <
       _nextWeeklyClose - guessCutoffBeforeClose
@@ -214,7 +214,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     ) {
       return;
     }
-    uint256 _fullClosePriceX96 = getCurrentPoolPriceUSDX96(
+    uint256 _fullClosePriceX96 = getPoolPriceUSDX96(
       priceToken,
       pricePool,
       nativeStablePool,
@@ -320,7 +320,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
 
   function buyTicket(uint256 _priceUSDX96) external {
     transferFrom(msg.sender, address(this), getCurrentPriceTokensPerTicket());
-    _buyPriceTicket(msg.sender, _priceUSDX96);
+    _buyTicket(msg.sender, _priceUSDX96);
   }
 
   function buyMultipleTickets(uint256[] memory _priceUSDX96) external {
@@ -330,7 +330,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
       _priceUSDX96.length * getCurrentPriceTokensPerTicket()
     );
     for (uint256 _i = 0; _i < _priceUSDX96.length; _i++) {
-      _buyPriceTicket(msg.sender, _priceUSDX96[_i]);
+      _buyTicket(msg.sender, _priceUSDX96[_i]);
     }
   }
 
@@ -347,7 +347,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     require(liquidityPosInitialized, 'INIT');
     (, , address _pool) = _getPoolInfo(_lpPoolFees[0]);
     return
-      getCurrentPoolPriceUSDX96(
+      getPoolPriceUSDX96(
         address(this),
         IUniswapV3Pool(_pool),
         nativeStablePool,
