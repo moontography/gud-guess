@@ -239,7 +239,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
         require(address(this).balance >= _before - _adminETH, 'SUBMIT: adm no');
       }
       uint256 _remainingWinningsETH = _totalWeeklyETH - _adminETH;
-      // If any/all winners guessed very late in the weekly time frame and total winning weights
+      // If any/all winners guessed very late in the weekly time window and total winning weights
       // are less than the maximum possible weight, reduce the winnings to be a percentage
       // of overall weights against the maximum possible.
       _winningsETH = _totWeights < maxGuessJackpotWeights
