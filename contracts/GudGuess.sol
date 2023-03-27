@@ -36,8 +36,8 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
 
   // in addition to increasing price per ticket closer to the deadline,
   // we will also reduce the guesser's share of the jackpot as the close approaches
-  uint32 public minGuessJackpotWeight = 5 * DENOMENATOR;
-  uint32 public maxGuessJackpotWeight = 10 * DENOMENATOR;
+  uint32 public minGuessJackpotWeight = 3 * DENOMENATOR;
+  uint32 public maxGuessJackpotWeight = 9 * DENOMENATOR;
 
   uint256 public launchTime;
 
