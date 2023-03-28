@@ -37,9 +37,12 @@ contract GudGuessTickets is IGudGuessTickets, ERC721Enumerable, Ownable {
     _;
   }
 
-  constructor(string memory _baseTokenURI) ERC721('Gud Guess Tickets', 'tGG') {
+  constructor(
+    address _gudPrice,
+    string memory _baseTokenURI
+  ) ERC721('Gud Guess Tickets', 'tGG') {
+    gudPrice = _gudPrice;
     baseTokenURI = _baseTokenURI;
-    gudPrice = msg.sender;
   }
 
   function tickets(
@@ -56,7 +59,7 @@ contract GudGuessTickets is IGudGuessTickets, ERC721Enumerable, Ownable {
     address nativeStablePool,
     uint256 priceUSDX96,
     uint32 winningsWeight
-  ) external onlyGudPrice returns (uint256) {
+  ) external override onlyGudPrice returns (uint256) {
     _ids.increment();
     _safeMint(owner, _ids.current());
     _tickets[_ids.current()] = TicketMetadata({

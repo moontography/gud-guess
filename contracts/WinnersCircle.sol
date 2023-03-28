@@ -3,8 +3,9 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import './interfaces/IGudGuessTickets.sol';
+import './interfaces/IWinnersCircle.sol';
 
-contract WinnersCircle {
+contract WinnersCircle is IWinnersCircle {
   address public immutable owner;
   IGudGuessTickets public gpTickets;
 
@@ -36,8 +37,8 @@ contract WinnersCircle {
     uint256 totalWinningsWeight
   );
 
-  constructor(IGudGuessTickets _gpTickets) {
-    owner = msg.sender;
+  constructor(address _owner, IGudGuessTickets _gpTickets) {
+    owner = _owner;
     gpTickets = _gpTickets;
   }
 
@@ -45,7 +46,7 @@ contract WinnersCircle {
     uint256 _weeklyClose,
     uint256 _priceX96,
     uint256 _totalWinningsWeight
-  ) external payable onlyOwner {
+  ) external payable override onlyOwner {
     weeklyCloseInfo[_weeklyClose] = WinningMetadata({
       totalWinningsETH: msg.value,
       winningPriceX96: _priceX96,
