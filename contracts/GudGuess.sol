@@ -401,7 +401,7 @@ contract GudGuess is UniswapV3FeeERC20 {
     uint256 _thisComingMidnight = _timestamp + 1 days - _diffFromMidnight;
     uint256 _todayDOW = BokkyPooBahsDateTimeLibrary.getDayOfWeek(_timestamp);
     uint256 _daysUntilEOW = 7 - _todayDOW;
-    return _thisComingMidnight + (_daysUntilEOW * 1 days);
+    return _thisComingMidnight + (_daysUntilEOW * 1 days) - 1;
   }
 
   function manualSwap() external onlyOwner {
