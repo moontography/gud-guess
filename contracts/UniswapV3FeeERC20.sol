@@ -62,6 +62,35 @@ contract UniswapV3FeeERC20 is
     );
   }
 
+  function depositLiquidityPosition(uint256 _tokenId) external onlyOwner {
+    address _owner = lpPosManager.ownerOf(_tokenId);
+    if (_owner != address(this)) {
+      lpPosManager.safeTransferFrom(_owner, address(this), _tokenId);
+    }
+    (
+      ,
+      ,
+      address _token0,
+      address _token1,
+      uint24 _fee,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+
+    ) = lpPosManager.positions(_tokenId);
+    PoolAddress.PoolKey memory _poolKey = PoolAddress.PoolKey({
+      token0: _token0,
+      token1: _token1,
+      fee: _fee
+    });
+    address _pool = PoolAddress.computeAddress(factory, _poolKey);
+    _lpPoolFees.push(_fee);
+    liquidityPositions[_pool] = _tokenId;
+  }
+
   function withdrawLiquidityPosition(address _pool) external onlyOwner {
     uint256 _tokenId = liquidityPositions[_pool];
     require(_tokenId > 0, 'WITHDRAW: no position');
