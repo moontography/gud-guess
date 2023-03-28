@@ -14,6 +14,12 @@ If your contract requires extra constructor arguments, you'll have to specify th
 
 ```sh
 $ CONTRACT_NAME=GudGuess npx hardhat run --network goerli scripts/deploy.js
+$ CONTRACT_NAME=TwapUtils npx hardhat run --network goerli scripts/deploy.js
+$ CONTRACT_NAME=GudGuessTickets npx hardhat run --network goerli scripts/deploy.js
+$ CONTRACT_NAME=WinnersCircle npx hardhat run --network goerli scripts/deploy.js
+$ # setTwapUtils()
+$ # setTickets()
+$ # setWinnersCircle()
 $ # lpCreatePool(3000, priceX96)
 $ # lpCreatePool(10000, priceX96)
 $ # lpCreatePosition(3000, 50)

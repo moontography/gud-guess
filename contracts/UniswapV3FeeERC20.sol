@@ -3,7 +3,6 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
@@ -12,7 +11,7 @@ import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 import '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
 import '@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol';
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
-import '@uniswap/v3-periphery/contracts/base/LiquidityManagement.sol';
+import '@uniswap/v3-periphery/contracts/base/PeripheryImmutableState.sol';
 import './interfaces/IWETH.sol';
 
 contract UniswapV3FeeERC20 is
@@ -227,7 +226,7 @@ contract UniswapV3FeeERC20 is
           sqrtPriceLimitX96: 0
         })
       );
-      uint256 _balWETH = IERC20(WETH9).balanceOf(address(this));
+      uint256 _balWETH = ERC20(WETH9).balanceOf(address(this));
       if (_balWETH > 0) {
         IWETH(WETH9).withdraw(_balWETH);
       }

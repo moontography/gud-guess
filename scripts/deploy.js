@@ -31,6 +31,14 @@ async function main() {
     // 'true',
     // '0x1F98431c8aD98523631AE4a59f267346ea31F984',
     // '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
+
+    // GudGuessTickets
+    // '',
+    // 'https://api.gudguess.com/tickets/metadata/'
+
+    // WinnersCircle
+    // '',
+    // ''
   )
 
   console.log('Contract address:', contract.address)

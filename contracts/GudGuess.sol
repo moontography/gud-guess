@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import './GudGuessTickets.sol';
-import './TwapUtils.sol';
+import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
+import './HolderRewards.sol';
 import './UniswapV3FeeERC20.sol';
-import './WinnersCircle.sol';
+import './interfaces/IGudGuessTickets.sol';
+import './interfaces/ITwapUtils.sol';
+import './interfaces/IWinnersCircle.sol';
 import './libraries/BokkyPooBahsDateTimeLibrary.sol';
 
-contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
+contract GudGuess is UniswapV3FeeERC20 {
   uint32 constant DENOMENATOR = 10000;
 
-  GudGuessTickets public tickets;
-  WinnersCircle public winnersCircle;
+  ITwapUtils public twapUtils;
+  HolderRewards public rewards;
+  IGudGuessTickets public tickets;
+  IWinnersCircle public winnersCircle;
 
   address priceToken;
   IUniswapV3Pool public pricePool;
@@ -25,6 +29,8 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   // percentage of total pool to use for weekly winnings
   // will roll over if no winnings for the week
   uint32 public winningsPerc = (DENOMENATOR * 50) / 100; // 50%
+  // percentage of jackpot that will pay out in rewards to holders each week
+  uint32 public rewardsPerc = (DENOMENATOR * 1) / 100; // 1%
   // percentage of winnings per weekly close used to compensate for R&D
   uint32 public adminPerc = (DENOMENATOR * 5) / 100; // 5%
 
@@ -34,16 +40,14 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   uint256 public pricePerTicketMinUSDX96 = 2 * FixedPoint96.Q96; // $2 per ticket;
   uint256 public pricePerTicketMaxUSDX96 = 5 * FixedPoint96.Q96; // $5 per ticket ;
 
-  // we support guessing the weekly close price up to guessCutoffBeforeClose
-  // before the close itself. in addition to increasing price per ticket
-  // closer to the deadline, we will also reduce the guessor's share
-  // of the jackpot the closer to the weekly close we get
-  uint32 public minGuessJackpotWeight = 5 * DENOMENATOR;
-  uint32 public maxGuessJackpotWeight = 10 * DENOMENATOR;
+  // in addition to increasing price per ticket closer to the deadline,
+  // we will also reduce the guesser's share of the jackpot as the close approaches
+  uint32 public minGuessJackpotWeight = 6 * DENOMENATOR;
+  uint32 public maxGuessJackpotWeight = 9 * DENOMENATOR;
 
   uint256 public launchTime;
 
-  uint256 public swapAtAmount;
+  uint256 public swapAtAmountSupplyPerc = (DENOMENATOR * 2) / 1000; // 0.2%
   bool public swapEnabled = true;
 
   // precisionDecimals is the number of decimals compared to 10**18 that determines
@@ -64,6 +68,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
 
   mapping(address => bool) public amms; // AMM == Automated Market Maker
   mapping(address => bool) public isBot;
+  mapping(address => bool) public rewardsExcluded;
 
   bool _swapping;
   modifier lockSwap() {
@@ -105,20 +110,18 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
       _WETH9
     )
   {
-    uint256 _supply = 100_000_000 * 10 ** decimals();
-    _mint(address(this), _supply);
-    swapAtAmount = (_supply * 2) / 1000; // 0.2% supply
-
-    tickets = new GudGuessTickets('https://api.gudguess.com/tickets/metadata/');
-    tickets.transferOwnership(msg.sender);
-    winnersCircle = new WinnersCircle(tickets);
+    rewards = new HolderRewards(address(this));
 
     adminWallet = msg.sender;
+    rewardsExcluded[address(this)] = true;
 
     priceToken = _priceToken;
     pricePool = _pricePool;
     nativeStablePool = _nativeStablePool;
     _isPoolPairedWETH9 = __isPoolPairedWETH9;
+
+    uint256 _supply = 100_000_000 * 10 ** decimals();
+    _mint(address(this), _supply);
   }
 
   function _transfer(
@@ -148,6 +151,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
           ? (amount * 5) / 100
           : (amount * 5) / 1000;
         super._transfer(sender, address(this), _tax);
+        _afterTokenTransfer(sender, address(this), _tax);
       } else if (block.timestamp > launchTime + 10 seconds) {
         require(!isBot[recipient], 'TRANSFER: bot0');
         require(!isBot[sender], 'TRANSFER: bot1');
@@ -158,7 +162,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
         !_swapping &&
         swapEnabled &&
         liquidityPosInitialized &&
-        balanceOf(address(this)) >= swapAtAmount
+        balanceOf(address(this)) >= _getSwapAtAmount()
       ) {
         _swapForETHAndProcess();
       }
@@ -166,12 +170,26 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     }
 
     super._transfer(sender, recipient, amount - _tax);
+    _afterTokenTransfer(sender, recipient, amount - _tax);
+  }
+
+  // NOTE: need this to execute _afterTokenTransfer callback (not present in openzeppelin 3.4.2)
+  function _mint(address account, uint256 amount) internal override {
+    super._mint(account, amount);
+    _afterTokenTransfer(address(0), account, amount);
+  }
+
+  // NOTE: need this to execute _afterTokenTransfer callback (not present in openzeppelin 3.4.2)
+  function _burn(address account, uint256 amount) internal override {
+    super._burn(account, amount);
+    _afterTokenTransfer(account, address(0), amount);
   }
 
   function _swapForETHAndProcess() internal lockSwap {
-    uint256 _burnTokens = (swapAtAmount * burnPerc) / DENOMENATOR;
+    uint256 _swapAmount = _getSwapAtAmount();
+    uint256 _burnTokens = (_swapAmount * burnPerc) / DENOMENATOR;
     _burn(address(this), _burnTokens);
-    _swapTokensForETH(swapAtAmount - _burnTokens);
+    _swapTokensForETH(_swapAmount - _burnTokens);
   }
 
   function _buyTicket(address _user, uint256 _priceUSDX96) internal {
@@ -214,10 +232,11 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     ) {
       return;
     }
-    uint256 _fullClosePriceX96 = getPoolPriceUSDX96(
+    uint256 _jackpotETH = address(this).balance;
+    uint256 _fullClosePriceX96 = twapUtils.getPoolPriceUSDX96(
       priceToken,
-      pricePool,
-      nativeStablePool,
+      address(pricePool),
+      address(nativeStablePool),
       WETH9,
       _isPoolPairedWETH9
     );
@@ -228,23 +247,34 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
       FixedPoint96.Q96 *
       10 ** precisionDecimals) / 10 ** 18;
     weeklyClosePrice[_prevWeeklyClose] = _finalClosePriceX96;
+    uint256 _totWeights = weeklyWeights[_prevWeeklyClose][_finalClosePriceX96];
+    uint256 _rewardsETH = (_jackpotETH * rewardsPerc) / DENOMENATOR;
+    if (_rewardsETH > 0 && rewards.totalSharesDeposited() > 0) {
+      rewards.depositRewards{ value: _rewardsETH }();
+    }
+
     uint256 _winningsETH;
     if (weeklyGuesses[_prevWeeklyClose][_finalClosePriceX96] > 0) {
-      uint256 _totalWeeklyETH = (address(this).balance * winningsPerc) /
-        DENOMENATOR;
+      uint256 _totalWeeklyETH = (_jackpotETH * winningsPerc) / DENOMENATOR;
       uint256 _adminETH = (_totalWeeklyETH * adminPerc) / DENOMENATOR;
       if (_adminETH > 0) {
         uint256 _before = address(this).balance;
         (bool _success, ) = payable(adminWallet).call{ value: _adminETH }('');
-        require(_success, 'SUBMIT: did not send');
-        require(address(this).balance >= _before - _adminETH, 'SUBMIT: nope');
+        require(_success, 'SUBMIT0');
+        require(address(this).balance >= _before - _adminETH, 'SUBMIT1');
       }
-      _winningsETH = _totalWeeklyETH - _adminETH;
+      uint256 _remainingWinningsETH = _totalWeeklyETH - _adminETH;
+      // If any/all winners guessed very late in the weekly time window and total winning weights
+      // are less than the maximum possible weight, reduce the winnings to be a percentage
+      // of overall weights against the maximum possible.
+      _winningsETH = _totWeights < maxGuessJackpotWeight
+        ? (_remainingWinningsETH * _totWeights) / maxGuessJackpotWeight
+        : _remainingWinningsETH;
     }
     winnersCircle.closeWeeklyAndAddWinnings{ value: _winningsETH }(
       _prevWeeklyClose,
       _finalClosePriceX96,
-      weeklyWeights[_prevWeeklyClose][_finalClosePriceX96]
+      _totWeights
     );
 
     emit SubmitWeeklyClose(
@@ -252,7 +282,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
       _finalClosePriceX96,
       totalWeeklyGuesses[_prevWeeklyClose],
       weeklyGuesses[_prevWeeklyClose][_finalClosePriceX96],
-      weeklyWeights[_prevWeeklyClose][_finalClosePriceX96]
+      _totWeights
     );
   }
 
@@ -272,6 +302,14 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     return uint32(_max - (((block.timestamp - _start) * (_max - _min)) / _end));
   }
 
+  function _getSwapAtAmount() internal view returns (uint256) {
+    return (totalSupply() * swapAtAmountSupplyPerc) / DENOMENATOR;
+  }
+
+  function _canReceiveRewards(address _wallet) internal view returns (bool) {
+    return _wallet != address(0) && !rewardsExcluded[_wallet] && !amms[_wallet];
+  }
+
   function burn(uint256 _amount) external {
     _burn(msg.sender, _amount);
     emit Burn(msg.sender, _amount);
@@ -286,7 +324,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   ) external onlyOwner {
     _createLiquidityPool(
       _fee,
-      getSqrtPriceX96FromPriceX96(_initialPriceX96),
+      twapUtils.getSqrtPriceX96FromPriceX96(_initialPriceX96),
       4096
     );
   }
@@ -297,8 +335,8 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     uint24 _fee,
     uint8 _percentTokenAllo
   ) external payable onlyOwner {
-    require(msg.value > 0, 'ADDLP: need ETH for LP');
-    require(_percentTokenAllo <= 100, 'ADDLP: lte 100%');
+    require(msg.value > 0, 'ADDLP0');
+    require(_percentTokenAllo <= 100, 'ADDLP1');
 
     address _pool = _createLiquidityPosition(
       _fee,
@@ -309,8 +347,8 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   }
 
   function launch() external onlyOwner {
-    require(launchTime == 0, 'LAUNCH: already launched');
-    require(liquidityPosInitialized, 'LAUNCH: exec lpCreatePosition');
+    require(launchTime == 0, 'LAUNCH0');
+    require(liquidityPosInitialized, 'LAUNCH1');
     launchTime = block.timestamp;
   }
 
@@ -347,10 +385,10 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     require(liquidityPosInitialized, 'INIT');
     (, , address _pool) = _getPoolInfo(_lpPoolFees[0]);
     return
-      getPoolPriceUSDX96(
+      twapUtils.getPoolPriceUSDX96(
         address(this),
-        IUniswapV3Pool(_pool),
-        nativeStablePool,
+        _pool,
+        address(nativeStablePool),
         WETH9,
         true
       );
@@ -367,7 +405,7 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   }
 
   function manualSwap() external onlyOwner {
-    require(balanceOf(address(this)) >= swapAtAmount, 'SWAP: not enough');
+    require(balanceOf(address(this)) >= _getSwapAtAmount(), 'SWAP0');
     _swapForETHAndProcess();
   }
 
@@ -396,8 +434,23 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   }
 
   function forgiveBot(address _bot) external onlyOwner {
-    require(isBot[_bot], 'FORGIVE: not a bot');
+    require(isBot[_bot], 'FORGIVE0');
     isBot[_bot] = false;
+  }
+
+  function setTwapUtils(ITwapUtils _twapUtils) external onlyOwner {
+    require(address(twapUtils) == address(0), 'SETTW');
+    twapUtils = _twapUtils;
+  }
+
+  function setTickets(IGudGuessTickets _tickets) external onlyOwner {
+    require(address(tickets) == address(0), 'SETT');
+    tickets = _tickets;
+  }
+
+  function setWinnersCircle(IWinnersCircle _winnersCircle) external onlyOwner {
+    require(address(winnersCircle) == address(0), 'SETWC');
+    winnersCircle = _winnersCircle;
   }
 
   function setAdminWallet(address _adminWallet) external onlyOwner {
@@ -407,6 +460,11 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   function setBurnPerc(uint8 _perc) external onlyOwner {
     require(_perc <= DENOMENATOR, 'lte 100%');
     burnPerc = _perc;
+  }
+
+  function setRewardsPerc(uint8 _perc) external onlyOwner {
+    require(_perc <= (DENOMENATOR * 10) / 100, 'lte 10%');
+    rewardsPerc = _perc;
   }
 
   function setWinningsPerc(uint8 _perc) external onlyOwner {
@@ -420,8 +478,8 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
   }
 
   function setGuessJackpotWeights(uint32 _min, uint32 _max) external onlyOwner {
-    require(_max > 0, 'WEIGHTS: gt 0');
-    require(_min <= _max, 'WEIGHTS: minmax');
+    require(_max > 0, 'WEIGHTS0');
+    require(_min <= _max, 'WEIGHTS1');
     minGuessJackpotWeight = _min;
     maxGuessJackpotWeight = _max;
   }
@@ -433,20 +491,32 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
     uint256 _minUSD18,
     uint256 _maxUSD18
   ) external onlyOwner {
-    require(_minUSD18 <= _maxUSD18, 'PPT: minmax');
+    require(_minUSD18 <= _maxUSD18, 'PPT');
     pricePerTicketMinUSDX96 = (_minUSD18 * FixedPoint96.Q96) / 10 ** 18;
     pricePerTicketMaxUSDX96 = (_maxUSD18 * FixedPoint96.Q96) / 10 ** 18;
   }
 
-  function setSwapAtAmount(uint256 _amount) external onlyOwner {
-    require(_amount > 0, 'SETSWAPAM: gt 0');
-    require(_amount <= (totalSupply() * 2) / 100, 'SETSWAPAM: lte 2%');
-    swapAtAmount = _amount;
+  function setSwapAtAmountSupplyPerc(uint256 _supplyPerc) external onlyOwner {
+    require(_supplyPerc > 0, 'SETSWAPAM0');
+    require(_supplyPerc <= (DENOMENATOR * 2) / 100, 'SETSWAPAM1');
+    swapAtAmountSupplyPerc = _supplyPerc;
   }
 
-  function setTwapInterval(uint32 _seconds) external onlyOwner {
-    require(_seconds <= 1 hours, 'SETTWAPINT: lte 1 hour');
-    twapInterval = _seconds;
+  function setIsRewardsExcluded(
+    address _wallet,
+    bool _isExcluded
+  ) external onlyOwner {
+    require(rewardsExcluded[_wallet] != _isExcluded, 'SETEXCL');
+    rewardsExcluded[_wallet] = _isExcluded;
+
+    uint256 _walletBal = balanceOf(_wallet);
+    if (_walletBal > 0) {
+      bool _removeRewards = false;
+      if (_isExcluded) {
+        _removeRewards = true;
+      }
+      rewards.setShare(_wallet, _walletBal, _removeRewards);
+    }
   }
 
   // We will round prices both at the weekly close and all guesses provided
@@ -459,5 +529,18 @@ contract GudGuess is TwapUtils, UniswapV3FeeERC20 {
 
   function setGuessCutoffBeforeClose(uint256 _seconds) external onlyOwner {
     guessCutoffBeforeClose = _seconds;
+  }
+
+  function _afterTokenTransfer(
+    address _from,
+    address _to,
+    uint256 _amount
+  ) internal virtual {
+    if (_canReceiveRewards(_from)) {
+      rewards.setShare(_from, _amount, true);
+    }
+    if (_canReceiveRewards(_to)) {
+      rewards.setShare(_to, _amount, false);
+    }
   }
 }

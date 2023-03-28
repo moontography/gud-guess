@@ -17,4 +17,14 @@ interface IGudGuessTickets is IERC721 {
   function tickets(
     uint256 tokenId
   ) external view returns (TicketMetadata memory);
+
+  function mint(
+    address owner,
+    uint256 weeklyClose,
+    address token,
+    address primaryPool,
+    address nativeStablePool,
+    uint256 priceUSDX96,
+    uint32 winningsWeight
+  ) external returns (uint256);
 }
