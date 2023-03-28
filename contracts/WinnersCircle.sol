@@ -6,7 +6,7 @@ import './interfaces/IGudGuessTickets.sol';
 import './interfaces/IWinnersCircle.sol';
 
 contract WinnersCircle is IWinnersCircle {
-  address public immutable owner;
+  address public immutable gudPrice;
   IGudGuessTickets public gpTickets;
 
   struct WinningMetadata {
@@ -20,8 +20,8 @@ contract WinnersCircle is IWinnersCircle {
   // tokenId => was prize claimed
   mapping(uint256 => bool) public ticketsClaimed;
 
-  modifier onlyOwner() {
-    require(owner == msg.sender, 'OWNER');
+  modifier onlyGudPrice() {
+    require(gudPrice == msg.sender, 'UNAUTHORIZED');
     _;
   }
 
@@ -37,8 +37,8 @@ contract WinnersCircle is IWinnersCircle {
     uint256 totalWinningsWeight
   );
 
-  constructor(address _owner, IGudGuessTickets _gpTickets) {
-    owner = _owner;
+  constructor(address _gudPrice, IGudGuessTickets _gpTickets) {
+    gudPrice = _gudPrice;
     gpTickets = _gpTickets;
   }
 
@@ -46,7 +46,7 @@ contract WinnersCircle is IWinnersCircle {
     uint256 _weeklyClose,
     uint256 _priceX96,
     uint256 _totalWinningsWeight
-  ) external payable override onlyOwner {
+  ) external payable override onlyGudPrice {
     weeklyCloseInfo[_weeklyClose] = WinningMetadata({
       totalWinningsETH: msg.value,
       winningPriceX96: _priceX96,
