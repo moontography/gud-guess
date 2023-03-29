@@ -358,12 +358,16 @@ contract GudGuess is UniswapV3FeeERC20 {
   }
 
   function buyTicket(uint256 _priceUSDX96) external {
-    transferFrom(msg.sender, address(this), getCurrentPriceTokensPerTicket());
+    IERC20(address(this)).transferFrom(
+      msg.sender,
+      address(this),
+      getCurrentPriceTokensPerTicket()
+    );
     _buyTicket(msg.sender, _priceUSDX96);
   }
 
   function buyMultipleTickets(uint256[] memory _priceUSDX96) external {
-    transferFrom(
+    IERC20(address(this)).transferFrom(
       msg.sender,
       address(this),
       _priceUSDX96.length * getCurrentPriceTokensPerTicket()
