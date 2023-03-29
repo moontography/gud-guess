@@ -33,7 +33,7 @@ describe('GudGuess', function () {
   })
 
   describe('getWeeklyCloseFromTimestamp', function () {
-    // Monday, Jan 2 2023
+    // Monday, Jan 2 2023 09:00 UTC
     const date = dayjs.utc('2023-01-02T09:00:00Z')
 
     it('should return the correct weekly close', async function () {
