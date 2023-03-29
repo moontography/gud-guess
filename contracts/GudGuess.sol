@@ -325,7 +325,7 @@ contract GudGuess is UniswapV3FeeERC20 {
     _createLiquidityPool(
       _fee,
       twapUtils.getSqrtPriceX96FromPriceX96(_initialPriceX96),
-      4096
+      type(uint16).max
     );
   }
 
