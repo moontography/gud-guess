@@ -140,7 +140,7 @@ contract UniswapV3FeeERC20 is
     (address token0, address token1) = _getToken0AndToken1();
     // if the token placements are different than what was passed in,
     // update the amounts to reflect the adjustment
-    uint256 _amountETH = _amount1; // ETH always passed in throug amount1
+    uint256 _amountETH = _amount1; // ETH always passed in through amount1
     if (token0 != address(this)) {
       uint256 _cachedAmount0 = _amount0;
       _amount0 = _amount1;
