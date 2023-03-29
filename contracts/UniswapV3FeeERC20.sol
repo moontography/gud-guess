@@ -125,9 +125,11 @@ contract UniswapV3FeeERC20 is
       _poolFee,
       _initialSqrtPriceX96
     );
-    IUniswapV3Pool(_newPool).increaseObservationCardinalityNext(
-      _initPriceObservations
-    );
+    if (_initPriceObservations > 0) {
+      IUniswapV3Pool(_newPool).increaseObservationCardinalityNext(
+        _initPriceObservations
+      );
+    }
   }
 
   function _createLiquidityPosition(
