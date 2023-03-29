@@ -320,12 +320,13 @@ contract GudGuess is UniswapV3FeeERC20 {
   // initialPrice = token1Reserves / token0Reserves
   function lpCreatePool(
     uint24 _fee,
-    uint256 _initialPriceX96
+    uint256 _initialPriceX96,
+    uint16 _initPriceObservations
   ) external onlyOwner {
     _createLiquidityPool(
       _fee,
       twapUtils.getSqrtPriceX96FromPriceX96(_initialPriceX96),
-      4096
+      _initPriceObservations
     );
   }
 
