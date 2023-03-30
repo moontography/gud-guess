@@ -17,7 +17,7 @@ contract GudGuess is UniswapV3FeeERC20 {
   IGudGuessTickets public tickets;
   IWinnersCircle public winnersCircle;
 
-  address priceToken;
+  address public priceToken;
   IUniswapV3Pool public pricePool;
   IUniswapV3Pool public nativeStablePool;
   bool _isPoolPairedWETH9;
@@ -55,8 +55,8 @@ contract GudGuess is UniswapV3FeeERC20 {
   // For example, 18 means we are storing both guesses and weekly close
   // values at $1 precision compared to the USD value, (10**18 decimals)
   // 16 would be precise to the $0.01
-  uint8 precisionDecimals = 16;
-  uint256 guessCutoffBeforeClose = 3 days;
+  uint8 public precisionDecimals = 16;
+  uint256 public guessCutoffBeforeClose = 3 days;
   // weeklyClose => price
   mapping(uint256 => uint256) public weeklyClosePrice;
   // weeklyClose => total tickets sold
@@ -344,6 +344,7 @@ contract GudGuess is UniswapV3FeeERC20 {
       (balanceOf(address(this)) * _percentTokenAllo) / 100,
       msg.value
     );
+    _setIsRewardsExcluded(_pool, true);
     amms[_pool] = true;
   }
 
@@ -511,6 +512,10 @@ contract GudGuess is UniswapV3FeeERC20 {
     address _wallet,
     bool _isExcluded
   ) external onlyOwner {
+    _setIsRewardsExcluded(_wallet, _isExcluded);
+  }
+
+  function _setIsRewardsExcluded(address _wallet, bool _isExcluded) internal {
     require(rewardsExcluded[_wallet] != _isExcluded, 'SETEXCL');
     rewardsExcluded[_wallet] = _isExcluded;
 
