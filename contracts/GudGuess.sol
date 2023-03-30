@@ -233,13 +233,7 @@ contract GudGuess is UniswapV3FeeERC20 {
       return;
     }
     uint256 _jackpotETH = address(this).balance;
-    uint256 _fullClosePriceX96 = twapUtils.getPoolPriceUSDX96(
-      priceToken,
-      address(pricePool),
-      address(nativeStablePool),
-      WETH9,
-      _isPoolPairedWETH9
-    );
+    uint256 _fullClosePriceX96 = getPriceTokenPriceUSDX96();
     uint256 _rawClosePriceAtPrecision = (_fullClosePriceX96 * 10 ** 18) /
       FixedPoint96.Q96 /
       10 ** precisionDecimals;
@@ -397,6 +391,17 @@ contract GudGuess is UniswapV3FeeERC20 {
         address(nativeStablePool),
         WETH9,
         true
+      );
+  }
+
+  function getPriceTokenPriceUSDX96() public view returns (uint256) {
+    return
+      twapUtils.getPoolPriceUSDX96(
+        priceToken,
+        address(pricePool),
+        address(nativeStablePool),
+        WETH9,
+        _isPoolPairedWETH9
       );
   }
 
