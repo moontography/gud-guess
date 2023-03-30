@@ -280,20 +280,26 @@ contract GudGuess is UniswapV3FeeERC20 {
     );
   }
 
-  function _getStartEndOfWeekly(
+  function getStartEndOfWeeklyGuessPeriod(
     uint256 _timestamp
-  ) internal view returns (uint256 start, uint256 end) {
+  ) public view returns (uint256 start, uint256 end, uint256 span) {
     start =
       getWeeklyCloseFromTimestamp(_timestamp - 7 days) -
       guessCutoffBeforeClose;
     end = getWeeklyCloseFromTimestamp(_timestamp) - guessCutoffBeforeClose;
+    span = end - start;
   }
 
   function _getCurrentWinningsWeight() internal view returns (uint32) {
     uint32 _min = minGuessJackpotWeight;
     uint32 _max = maxGuessJackpotWeight;
-    (uint256 _start, uint256 _end) = _getStartEndOfWeekly(block.timestamp);
-    return uint32(_max - (((block.timestamp - _start) * (_max - _min)) / _end));
+    (
+      uint256 _start,
+      uint256 _end,
+      uint256 _span
+    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
+    return
+      uint32(_max - (((block.timestamp - _start) * (_max - _min)) / _span));
   }
 
   function _getSwapAtAmount() internal view returns (uint256) {
@@ -375,9 +381,13 @@ contract GudGuess is UniswapV3FeeERC20 {
   function getCurrentPriceTokensPerTicket() public view returns (uint256) {
     uint256 _min = pricePerTicketMinUSDX96;
     uint256 _max = pricePerTicketMaxUSDX96;
-    (uint256 _start, uint256 _end) = _getStartEndOfWeekly(block.timestamp);
+    (
+      uint256 _start,
+      uint256 _end,
+      uint256 _span
+    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
     uint256 _perTicketUSDX96 = _min +
-      (((block.timestamp - _start) * (_max - _min)) / _end);
+      (((block.timestamp - _start) * (_max - _min)) / _span);
     return (_perTicketUSDX96 * 10 ** decimals()) / getCurrentPriceUSDX96();
   }
 
