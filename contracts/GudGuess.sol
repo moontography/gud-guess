@@ -28,7 +28,7 @@ contract GudGuess is UniswapV3FeeERC20 {
   uint32 public burnPerc = (DENOMENATOR * 25) / 100; // 25%
   // percentage of total pool to use for weekly winnings
   // will roll over if no winnings for the week
-  uint32 public winningsPerc = (DENOMENATOR * 50) / 100; // 50%
+  uint32 public winningsPerc = (DENOMENATOR * 40) / 100; // 40%
   // percentage of jackpot that will pay out in rewards to holders each week
   uint32 public rewardsPerc = (DENOMENATOR * 1) / 100; // 1%
   // percentage of winnings per weekly close used to compensate for R&D
@@ -49,6 +49,7 @@ contract GudGuess is UniswapV3FeeERC20 {
 
   uint256 public swapAtAmountSupplyPerc = (DENOMENATOR * 2) / 1000; // 0.2%
   bool public swapEnabled = true;
+  bool public taxEnabled = true;
 
   // precisionDecimals is the number of decimals compared to 10**18 that determines
   // the precision we are evaluating and storing weekly close prices at.
@@ -146,13 +147,15 @@ contract GudGuess is UniswapV3FeeERC20 {
           require(_launchMax <= totalSupply() / 100, 'max 1% at launch');
         }
 
-        // first 30 days tax at 5%, afterwards 0.5%
-        _tax = block.timestamp < launchTime + 30 days
-          ? (amount * 5) / 100
-          : (amount * 5) / 1000;
-        super._transfer(sender, address(this), _tax);
-        _afterTokenTransfer(sender, address(this), _tax);
-      } else if (block.timestamp > launchTime + 10 seconds) {
+        if (taxEnabled) {
+          // first 30 days tax at 5%, afterwards 1%
+          _tax = block.timestamp < launchTime + 30 days
+            ? (amount * 5) / 100
+            : (amount * 1) / 100;
+          super._transfer(sender, address(this), _tax);
+          _afterTokenTransfer(sender, address(this), _tax);
+        }
+      } else {
         require(!isBot[recipient], 'TRANSFER: bot0');
         require(!isBot[sender], 'TRANSFER: bot1');
         require(!isBot[_msgSender()], 'TRANSFER: bot2');
@@ -232,7 +235,7 @@ contract GudGuess is UniswapV3FeeERC20 {
     ) {
       return;
     }
-    uint256 _jackpotETH = address(this).balance;
+    uint256 _jackpotETH = getTotalJackpotBalance();
     uint256 _fullClosePriceX96 = getPriceTokenPriceUSDX96();
     uint256 _rawClosePriceAtPrecision = (_fullClosePriceX96 * 10 ** 18) /
       FixedPoint96.Q96 /
@@ -283,21 +286,23 @@ contract GudGuess is UniswapV3FeeERC20 {
   function getStartEndOfWeeklyGuessPeriod(
     uint256 _timestamp
   ) public view returns (uint256 start, uint256 end, uint256 span) {
-    start =
-      getWeeklyCloseFromTimestamp(_timestamp - 7 days) -
-      guessCutoffBeforeClose;
-    end = getWeeklyCloseFromTimestamp(_timestamp) - guessCutoffBeforeClose;
+    uint256 _followingWeeklyClose = getWeeklyCloseFromTimestamp(_timestamp);
+    uint256 _weeklyCloseForGuess = _timestamp <
+      _followingWeeklyClose - guessCutoffBeforeClose
+      ? _followingWeeklyClose
+      : getWeeklyCloseFromTimestamp(_timestamp + 7 days);
+
+    start = _weeklyCloseForGuess - 7 days - guessCutoffBeforeClose;
+    end = _weeklyCloseForGuess - guessCutoffBeforeClose;
     span = end - start;
   }
 
   function _getCurrentWinningsWeight() internal view returns (uint32) {
     uint32 _min = minGuessJackpotWeight;
     uint32 _max = maxGuessJackpotWeight;
-    (
-      uint256 _start,
-      uint256 _end,
-      uint256 _span
-    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
+    (uint256 _start, , uint256 _span) = getStartEndOfWeeklyGuessPeriod(
+      block.timestamp
+    );
     return
       uint32(_max - (((block.timestamp - _start) * (_max - _min)) / _span));
   }
@@ -378,14 +383,16 @@ contract GudGuess is UniswapV3FeeERC20 {
     }
   }
 
+  function getTotalJackpotBalance() public view returns (uint256) {
+    return address(this).balance;
+  }
+
   function getCurrentPriceTokensPerTicket() public view returns (uint256) {
     uint256 _min = pricePerTicketMinUSDX96;
     uint256 _max = pricePerTicketMaxUSDX96;
-    (
-      uint256 _start,
-      uint256 _end,
-      uint256 _span
-    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
+    (uint256 _start, , uint256 _span) = getStartEndOfWeeklyGuessPeriod(
+      block.timestamp
+    );
     uint256 _perTicketUSDX96 = _min +
       (((block.timestamp - _start) * (_max - _min)) / _span);
     return (_perTicketUSDX96 * 10 ** decimals()) / getCurrentPriceUSDX96();
@@ -521,6 +528,16 @@ contract GudGuess is UniswapV3FeeERC20 {
     require(_supplyPerc > 0, 'SETSWAPAM0');
     require(_supplyPerc <= (DENOMENATOR * 2) / 100, 'SETSWAPAM1');
     swapAtAmountSupplyPerc = _supplyPerc;
+  }
+
+  function setSwapEnabled(bool _enabled) external onlyOwner {
+    require(swapEnabled != _enabled, 'SWAPEN');
+    swapEnabled = _enabled;
+  }
+
+  function setTaxEnabled(bool _enabled) external onlyOwner {
+    require(taxEnabled != _enabled, 'TAXEN');
+    taxEnabled = _enabled;
   }
 
   function setIsRewardsExcluded(

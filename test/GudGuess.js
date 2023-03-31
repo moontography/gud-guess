@@ -49,4 +49,51 @@ describe('GudGuess', function () {
       expect(testWeeklyClose.toString()).to.be.eq(weeklyCloseCheck.toString())
     })
   })
+
+  describe('getStartEndOfWeeklyGuessPeriod', function () {
+    // Monday, Jan 2 2023 09:00 UTC
+    const dateEarly = dayjs.utc('2023-01-02T09:00:00Z')
+    // Saturday, Jan 7 2023 09:00 UTC
+    const dateLate = dayjs.utc('2023-01-07T09:00:00Z')
+
+    it('should get the correct weekly close guess periods early in the week', async function () {
+      const testWeeklyCloseEarly =
+        await gudGuessInst.getStartEndOfWeeklyGuessPeriod(dateEarly.unix())
+      const weeklyCloseEarlyStartCheck = dayjs
+        .utc(`2023-01-08T23:59:59Z`)
+        .subtract(7, 'days')
+        .subtract(3, 'days')
+        .unix()
+      const weeklyCloseEarlyEndCheck = dayjs
+        .utc(`2023-01-08T23:59:59Z`)
+        .subtract(3, 'days')
+        .unix()
+      expect(testWeeklyCloseEarly.start.toString()).to.be.eq(
+        weeklyCloseEarlyStartCheck.toString()
+      )
+      expect(testWeeklyCloseEarly.end.toString()).to.be.eq(
+        weeklyCloseEarlyEndCheck.toString()
+      )
+    })
+
+    it('should get the correct weekly close guess periods later in the week', async function () {
+      const testWeeklyCloseLate =
+        await gudGuessInst.getStartEndOfWeeklyGuessPeriod(dateLate.unix())
+      const weeklyCloseLateStartCheck = dayjs
+        .utc(`2023-01-15T23:59:59Z`)
+        .subtract(7, 'days')
+        .subtract(3, 'days')
+        .unix()
+      const weeklyCloseLateEndCheck = dayjs
+        .utc(`2023-01-15T23:59:59Z`)
+        .subtract(3, 'days')
+        .unix()
+      expect(testWeeklyCloseLate.start.toString()).to.be.eq(
+        weeklyCloseLateStartCheck.toString()
+      )
+      expect(testWeeklyCloseLate.end.toString()).to.be.eq(
+        weeklyCloseLateEndCheck.toString()
+      )
+    })
+  })
 })
