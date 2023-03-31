@@ -49,6 +49,7 @@ contract GudGuess is UniswapV3FeeERC20 {
 
   uint256 public swapAtAmountSupplyPerc = (DENOMENATOR * 2) / 1000; // 0.2%
   bool public swapEnabled = true;
+  bool public taxEnabled = true;
 
   // precisionDecimals is the number of decimals compared to 10**18 that determines
   // the precision we are evaluating and storing weekly close prices at.
@@ -146,13 +147,15 @@ contract GudGuess is UniswapV3FeeERC20 {
           require(_launchMax <= totalSupply() / 100, 'max 1% at launch');
         }
 
-        // first 30 days tax at 5%, afterwards 0.5%
-        _tax = block.timestamp < launchTime + 30 days
-          ? (amount * 5) / 100
-          : (amount * 5) / 1000;
-        super._transfer(sender, address(this), _tax);
-        _afterTokenTransfer(sender, address(this), _tax);
-      } else if (block.timestamp > launchTime + 10 seconds) {
+        if (taxEnabled) {
+          // first 30 days tax at 5%, afterwards 1%
+          _tax = block.timestamp < launchTime + 30 days
+            ? (amount * 5) / 100
+            : (amount * 1) / 100;
+          super._transfer(sender, address(this), _tax);
+          _afterTokenTransfer(sender, address(this), _tax);
+        }
+      } else {
         require(!isBot[recipient], 'TRANSFER: bot0');
         require(!isBot[sender], 'TRANSFER: bot1');
         require(!isBot[_msgSender()], 'TRANSFER: bot2');
@@ -530,6 +533,11 @@ contract GudGuess is UniswapV3FeeERC20 {
   function setSwapEnabled(bool _enabled) external onlyOwner {
     require(swapEnabled != _enabled, 'SWAPEN');
     swapEnabled = _enabled;
+  }
+
+  function setTaxEnabled(bool _enabled) external onlyOwner {
+    require(taxEnabled != _enabled, 'TAXEN');
+    taxEnabled = _enabled;
   }
 
   function setIsRewardsExcluded(

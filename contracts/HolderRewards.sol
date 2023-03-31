@@ -72,16 +72,13 @@ contract HolderRewards {
 
   function _removeShares(address shareholder, uint256 amount) internal {
     require(
-      shares[shareholder].amount > 0 &&
-        (amount == 0 || amount <= shares[shareholder].amount),
+      shares[shareholder].amount > 0 && amount <= shares[shareholder].amount,
       'REMOVE: no shares'
     );
     _distributeReward(shareholder);
 
-    uint256 removeAmount = amount == 0 ? shares[shareholder].amount : amount;
-
-    totalSharesDeposited -= removeAmount;
-    shares[shareholder].amount -= removeAmount;
+    totalSharesDeposited -= amount;
+    shares[shareholder].amount -= amount;
     if (shares[shareholder].amount == 0) {
       totalStakedUsers--;
     }
