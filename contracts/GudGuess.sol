@@ -232,7 +232,7 @@ contract GudGuess is UniswapV3FeeERC20 {
     ) {
       return;
     }
-    uint256 _jackpotETH = address(this).balance;
+    uint256 _jackpotETH = getTotalJackpotBalance();
     uint256 _fullClosePriceX96 = getPriceTokenPriceUSDX96();
     uint256 _rawClosePriceAtPrecision = (_fullClosePriceX96 * 10 ** 18) /
       FixedPoint96.Q96 /
@@ -293,11 +293,9 @@ contract GudGuess is UniswapV3FeeERC20 {
   function _getCurrentWinningsWeight() internal view returns (uint32) {
     uint32 _min = minGuessJackpotWeight;
     uint32 _max = maxGuessJackpotWeight;
-    (
-      uint256 _start,
-      uint256 _end,
-      uint256 _span
-    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
+    (uint256 _start, , uint256 _span) = getStartEndOfWeeklyGuessPeriod(
+      block.timestamp
+    );
     return
       uint32(_max - (((block.timestamp - _start) * (_max - _min)) / _span));
   }
@@ -378,14 +376,16 @@ contract GudGuess is UniswapV3FeeERC20 {
     }
   }
 
+  function getTotalJackpotBalance() public view returns (uint256) {
+    return address(this).balance;
+  }
+
   function getCurrentPriceTokensPerTicket() public view returns (uint256) {
     uint256 _min = pricePerTicketMinUSDX96;
     uint256 _max = pricePerTicketMaxUSDX96;
-    (
-      uint256 _start,
-      uint256 _end,
-      uint256 _span
-    ) = getStartEndOfWeeklyGuessPeriod(block.timestamp);
+    (uint256 _start, , uint256 _span) = getStartEndOfWeeklyGuessPeriod(
+      block.timestamp
+    );
     uint256 _perTicketUSDX96 = _min +
       (((block.timestamp - _start) * (_max - _min)) / _span);
     return (_perTicketUSDX96 * 10 ** decimals()) / getCurrentPriceUSDX96();
@@ -521,6 +521,11 @@ contract GudGuess is UniswapV3FeeERC20 {
     require(_supplyPerc > 0, 'SETSWAPAM0');
     require(_supplyPerc <= (DENOMENATOR * 2) / 100, 'SETSWAPAM1');
     swapAtAmountSupplyPerc = _supplyPerc;
+  }
+
+  function setSwapEnabled(bool _enabled) external onlyOwner {
+    require(swapEnabled != _enabled, 'SWAPEN');
+    swapEnabled = _enabled;
   }
 
   function setIsRewardsExcluded(
