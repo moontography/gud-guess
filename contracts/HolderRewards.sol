@@ -16,7 +16,7 @@ contract HolderRewards {
     uint256 totalExcluded;
     uint256 totalRealized;
   }
-  mapping(address => Share) private shares;
+  mapping(address => Share) shares;
   mapping(address => Reward) public rewards;
 
   uint256 public totalRewards;
@@ -52,7 +52,7 @@ contract HolderRewards {
     }
   }
 
-  function _addShares(address shareholder, uint256 amount) private {
+  function _addShares(address shareholder, uint256 amount) internal {
     if (shares[shareholder].amount > 0) {
       _distributeReward(shareholder);
     }
@@ -70,7 +70,7 @@ contract HolderRewards {
     );
   }
 
-  function _removeShares(address shareholder, uint256 amount) private {
+  function _removeShares(address shareholder, uint256 amount) internal {
     require(
       shares[shareholder].amount > 0 &&
         (amount == 0 || amount <= shares[shareholder].amount),

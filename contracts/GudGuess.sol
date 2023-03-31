@@ -28,7 +28,7 @@ contract GudGuess is UniswapV3FeeERC20 {
   uint32 public burnPerc = (DENOMENATOR * 25) / 100; // 25%
   // percentage of total pool to use for weekly winnings
   // will roll over if no winnings for the week
-  uint32 public winningsPerc = (DENOMENATOR * 50) / 100; // 50%
+  uint32 public winningsPerc = (DENOMENATOR * 40) / 100; // 40%
   // percentage of jackpot that will pay out in rewards to holders each week
   uint32 public rewardsPerc = (DENOMENATOR * 1) / 100; // 1%
   // percentage of winnings per weekly close used to compensate for R&D
