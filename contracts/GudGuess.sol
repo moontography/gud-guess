@@ -283,10 +283,14 @@ contract GudGuess is UniswapV3FeeERC20 {
   function getStartEndOfWeeklyGuessPeriod(
     uint256 _timestamp
   ) public view returns (uint256 start, uint256 end, uint256 span) {
-    start =
-      getWeeklyCloseFromTimestamp(_timestamp - 7 days) -
-      guessCutoffBeforeClose;
-    end = getWeeklyCloseFromTimestamp(_timestamp) - guessCutoffBeforeClose;
+    uint256 _followingWeeklyClose = getWeeklyCloseFromTimestamp(_timestamp);
+    uint256 _weeklyCloseForGuess = _timestamp <
+      _followingWeeklyClose - guessCutoffBeforeClose
+      ? _followingWeeklyClose
+      : getWeeklyCloseFromTimestamp(_timestamp + 7 days);
+
+    start = _weeklyCloseForGuess - 7 days - guessCutoffBeforeClose;
+    end = _weeklyCloseForGuess - guessCutoffBeforeClose;
     span = end - start;
   }
 
