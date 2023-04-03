@@ -1,3 +1,10 @@
+/**
+ * Gud Guess (GG)
+ * https://gudguess.com
+ * https://t.me/gudguess
+ * https://twitter.com/gudguess
+ **/
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
@@ -450,13 +457,6 @@ contract GudGuess is UniswapV3FeeERC20 {
     _isPoolPairedWETH9 = _pairedWithWETH9;
   }
 
-  function setNativeStablePool(IUniswapV3Pool _pool) external onlyOwner {
-    address _token0 = _pool.token0();
-    address _token1 = _pool.token1();
-    require(_token0 == WETH9 || _token1 == WETH9, 'NATIVE');
-    nativeStablePool = _pool;
-  }
-
   function toggleAmm(address _amm) external onlyOwner {
     amms[_amm] = !amms[_amm];
   }
@@ -485,22 +485,22 @@ contract GudGuess is UniswapV3FeeERC20 {
     adminWallet = _adminWallet;
   }
 
-  function setBurnPerc(uint8 _perc) external onlyOwner {
+  function setBurnPerc(uint32 _perc) external onlyOwner {
     require(_perc <= DENOMENATOR, 'lte 100%');
     burnPerc = _perc;
   }
 
-  function setRewardsPerc(uint8 _perc) external onlyOwner {
+  function setRewardsPerc(uint32 _perc) external onlyOwner {
     require(_perc <= (DENOMENATOR * 10) / 100, 'lte 10%');
     rewardsPerc = _perc;
   }
 
-  function setWinningsPerc(uint8 _perc) external onlyOwner {
+  function setWinningsPerc(uint32 _perc) external onlyOwner {
     require(_perc <= (DENOMENATOR * 80) / 100, 'lte 80%');
     winningsPerc = _perc;
   }
 
-  function setAdminPerc(uint8 _perc) external onlyOwner {
+  function setAdminPerc(uint32 _perc) external onlyOwner {
     require(_perc <= (DENOMENATOR * 5) / 100, 'lte 5%');
     adminPerc = _perc;
   }
